@@ -3,7 +3,7 @@ import pygame
 class limusk(pygame.sprite.Sprite):
     def __init__(self, x, y, laius, kõrgus):
         super().__init__()
-        self.orig_image = pygame.image.load("limusk.png")  # originaalpilt
+        self.orig_image = pygame.image.load("limusk.png")
         self.image = pygame.transform.scale(self.orig_image, (70, 90))
         self.rect = self.image.get_rect()
         self.rect.centerx = x
@@ -18,44 +18,66 @@ class limusk(pygame.sprite.Sprite):
         self.jump_power = -6
         self.on_ground = True
         
-        self.facing_right = True  # alguses vaatab paremale
+        self.facing_right = True
 
-    def update(self):
+    def update(self, blokid):
         keys = pygame.key.get_pressed()
-        
-        # Vasak / parem liikumine
+
+        # -------- HORISONTAALNE LIIKUMINE --------
+        dx = 0
         if keys[pygame.K_LEFT]:
-            self.rect.x -= self.speed
-            if self.facing_right:  # kui praegu vaatab paremale
+            dx = -self.speed
+            if self.facing_right:
                 self.facing_right = False
                 self.image = pygame.transform.flip(
                     pygame.transform.scale(self.orig_image, (70, 90)),
                     True, False
                 )
 
-        elif keys[pygame.K_RIGHT]:
-            self.rect.x += self.speed
-            if not self.facing_right:  # kui praegu vaatab vasakule
+        if keys[pygame.K_RIGHT]:
+            dx = self.speed
+            if not self.facing_right:
                 self.facing_right = True
-                # Flipime tagasi originaalpildile (horisontaalne False)
                 self.image = pygame.transform.scale(self.orig_image, (70, 90))
 
-        # Hüppamine
+        self.rect.x += dx
+
+        # Kokkupõrge külgedelt
+        for blokk in blokid:
+            if self.rect.colliderect(blokk.rect):
+                if dx > 0:
+                    self.rect.right = blokk.rect.left
+                if dx < 0:
+                    self.rect.left = blokk.rect.right
+
+        # -------- HÜPPAMINE --------
         if keys[pygame.K_SPACE] and self.on_ground:
             self.velocity_y = self.jump_power
             self.on_ground = False
 
-        # Gravitatsioon
+        # -------- GRAVITATSIOON --------
         self.velocity_y += self.gravity
         self.rect.y += self.velocity_y
 
-        # Põrand
+        # Vertikaalne kokkupõrge
+        self.on_ground = False
+        for blokk in blokid:
+            if self.rect.colliderect(blokk.rect):
+                if self.velocity_y > 0:  # kukub alla
+                    self.rect.bottom = blokk.rect.top
+                    self.velocity_y = 0
+                    self.on_ground = True
+                elif self.velocity_y < 0:  # liigub üles
+                    self.rect.top = blokk.rect.bottom
+                    self.velocity_y = 0
+
+        # -------- PÕRAND --------
         if self.rect.bottom >= self.kõrgus:
             self.rect.bottom = self.kõrgus
             self.velocity_y = 0
             self.on_ground = True
 
-        # Ekraani piirid
+        # -------- EKRAANI PIIRID --------
         if self.rect.left < 0:
             self.rect.left = 0
         if self.rect.right > self.laius:
